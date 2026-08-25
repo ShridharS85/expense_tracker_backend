@@ -1,0 +1,94 @@
+====================================================================
+EXPENSE TRACKER - TESTING NOTES (ADMIN ROLE + GOOGLE OAUTH2)
+====================================================================
+ 
+--------------------------------------------------------------------
+SECTION 1: TESTING ADMIN ROLE WORKFLOW (POSTMAN + SQL)
+--------------------------------------------------------------------
+ 
+Step 1 - Register a normal user
+    In Postman, register a user with name, email, and password. This user will be created with the default role: USER.
+Step 2 - Manually promote to admin via SQL
+    Go to your database (MySQL) and run an UPDATE query to change that user's role from USER to ADMIN.
+Step 3 - Login again
+    Login with the same user's credentials. The JWT/response should now show role as ADMIN.
+Step 4 - Check the dashboard
+    Call GET /api/dashboard: This should return income, expense, and balance for the logged-in user.
+Step 5 - Create more test users
+    Register a few more users normally (they will all get role: USER).
+Step 6 - Login as admin
+    Login using the admin account created in Step 3.
+Step 7 - List all users (admin only)
+    Call GET /api/admin/users: This should return the full list of registered users.
+Step 8 - Promote a user to admin
+    Call PUT /api/admin/users/{user_id}/promote: Replace {user_id} with the actual ID of the user to promote.
+Step 9 - Verify the promotion
+    Login as the user that was just promoted.Check their role in the response - it should now be ADMIN.
+ 
+ 
+--------------------------------------------------------------------
+SECTION 2: GOOGLE OAUTH2 LOGIN SETUP
+--------------------------------------------------------------------
+ 
+Step 1 - Go to Google Cloud Console
+    URL: https://console.cloud.google.com/
+Step 2 - Create or select a project
+    APIs & Services -> Credentials -> Create Credentials -> OAuth client ID
+Step 3 - Configure the OAuth client
+    Application type : Web application
+    Application name : Expense Tracker
+    Authorized redirect URI: http://localhost:8080/login/oauth2/code/google
+    Note: This is the callback URL Google redirects to AFTER the user authenticates.
+    Spring Security uses this exact path by default - do not change the path structure.
+    Do NOT add the frontend URL here (http://localhost:5173/oauth2/callback)
+    - that is a separate, frontend-only redirect handled after Spring Security completes its own callback.
+    Adding it to the Google Console redirect URI field will not work and is not needed.
+Step 4 - Copy the Client ID and Client Secret
+    Google will generate: - Client ID - Client Secret
+    These identify and authenticate YOUR APPLICATION to Google - not the end user.
+    - Client ID  -> tells Google which application is making the request
+    - Client Secret -> proves your backend is authorized to use that OAuth application
+    - Treat the Client Secret like a password. Store it only in application.properties / .env (not committed to git)
+Step 5 - Backend configuration (application.properties)
+    Frontend URL (no trailing slash): app.frontend.url=http://localhost:5173
+    OAuth2 scopes (leave as-is): spring.security.oauth2.client.registration.google.scope=email,profile
+    This tells Google your app wants access to:
+    - email   -> the user's email address
+    - profile -> the user's name / basic profile info
+    No changes needed to this scope line.
+ 
+ 
+--------------------------------------------------------------------
+SECTION 3: FRONTEND ENVIRONMENT VARIABLES
+--------------------------------------------------------------------
+ 
+Depends on which frontend tooling you're using:
+    Create React App (old, uses process.env): process.env.REACT_APP_API_URL
+    Vite (current project, uses import.meta.env): import.meta.env.VITE_API_URL
+    Since your frontend is React + Vite, use: import.meta.env.VITE_API_URL
+    Make sure the variable is defined in your .env file as: VITE_API_URL=http://localhost:8080
+
+_______________________________________________________________________________________________________
+Comment out CORS, OAuth2, frontend URL, and Google credentials before deploying.
+This is the backend URL: https://expense-tracker-backend-92ku.onrender.com/
+Now I can create the OAuth2 callback URL and configure the Google Cloud Console credentials.
+OAuth2 callback URL: https://expense-tracker-backend-92ku.onrender.com/login/oauth2/code/google
+Then include the backend URL in the frontend configuration and deploy the frontend to Vercel.
+After deployment, get the Vercel frontend URL and update the frontend URL in the backend environment variables.
+After these changes, the deployment configuration is complete.
+
+_________________________________________________________________________________________________________
+
+To create OAuth2 credentials:
+
+Go to: https://console.cloud.google.com/
+Then: APIs & Services → Credentials → Create Credentials → OAuth client ID
+Select: Application type → Web application
+        App name → Expense Tracker
+        Under Authorized redirect URIs, add the callback URL:
+        https://expense-tracker-backend-92ku.onrender.com/login/oauth2/code/google
+Then click Create.
+Finally, copy the Client ID and Client Secret and save them securely.
+
+If OAuth2 credentials already exist from the localhost setup,
+you can edit the existing credentials and update the Authorized redirect URI with the deployed backend callback URL.
